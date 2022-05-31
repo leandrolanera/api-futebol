@@ -1,9 +1,6 @@
 from django.db import models
 
 class Estadio(models.Model):
-    class Meta:
-        db_table = 'estadio' # This tells Django where the SQL table is
-        managed = False
     nome = models.CharField(max_length=50)
     nomeCompleto = models.CharField(max_length=100, blank=True)
     cidade = models.CharField(max_length=100)
