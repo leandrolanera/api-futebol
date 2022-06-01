@@ -2,18 +2,18 @@ from django.db import models
 
 class Estadio(models.Model):
     nome = models.CharField(max_length=50)
-    nomeCompleto = models.CharField(max_length=100, blank=True)
+    nomeCompleto = models.CharField(max_length=100, null=True)
     cidade = models.CharField(max_length=100)
     estado = models.CharField(max_length=2)
-    capacidade = models.IntegerField(blank=True)
+    capacidade = models.IntegerField(null=True)
 
     def __str__(self):
-        return "%s (%s)" % (self.nome, self.apelido)
+        return "%s (%s)" % (self.nome)
 
 class Time(models.Model):
     nome = models.CharField(max_length=50, blank=False, null=False)
-    nomeCompleto = models.CharField(max_length=200, blank=True)
-    apelido = models.CharField(max_length=100, blank=True)
+    nomeCompleto = models.CharField(max_length=200, null=True)
+    apelido = models.CharField(max_length=100, null=True)
     cidade = models.CharField(max_length=100)
     estado = models.CharField(max_length=2)
     estadioPrincipal = models.ForeignKey(Estadio, on_delete=models.CASCADE)
@@ -23,8 +23,8 @@ class Time(models.Model):
 
 class Jogador(models.Model):
     nome = models.CharField(max_length=50)
-    nomeCompleto = models.CharField(max_length=200, blank=True)
-    dtnasc = models.DateField(blank=True) 
+    nomeCompleto = models.CharField(max_length=200, null=True)
+    dtnasc = models.DateField(null=True) 
     numero = models.IntegerField()
     time = models.ForeignKey(Time, on_delete=models.CASCADE)
 

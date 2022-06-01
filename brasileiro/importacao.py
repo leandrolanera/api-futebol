@@ -258,8 +258,6 @@ def buscaJogos():
     linkRaiz = 'https://www.cbf.com.br/futebol-brasileiro/competicoes/campeonato-brasileiro-serie-'
     ##Lista para armazenar todos os jogos pesquisados.
     listaFinal = []
-    ##Lista para armazenar quem fez o gol, quando fez, em que tempo fez e qual o
-    listaFinalGols = []
 
     for i in lstSerie:                ##Este loop foi criado, para varrer a lista a ser pesquisada (permite buscar a Série B).
         serie = i                     ##Esta variável será utilizada para compor o link do jogo.
@@ -267,7 +265,7 @@ def buscaJogos():
             if (j == 0):
                 break
             ano = j         #1,381          ##Esta variável será utilizada para compor o link do jogo.
-            for nj in range (1, 30):  ##range de jogos a ser pesquisada. Não pode ser maior do que 380.
+            for nj in range (1, 5):  ##range de jogos a ser pesquisada. Não pode ser maior do que 380.
                 linkJogo = linkRaiz+serie+'/'+str(ano)+'/'+str(nj)                 ##Link completo do jogo a ser capturado
                 requisicao = requests.get(linkJogo)
                 print(linkJogo)
@@ -325,30 +323,22 @@ def buscaJogos():
                 lstGolsV = listaGols(str(ano), serie.upper(), num_jogo, visitante, golJog, dt_ini_cst, dt_fim_cst, 1)
 
                 ##Lista para armazenar o jogo que está sendo pesquisado no momento
-                lista = [str(ano), serie.upper(), num_jogo, num_rodada, num_turno, estadio_jogo, cidade_jogo, uf_jogo
-                        , data, diasemana, hora_jogo, mandante, ufMandante, gol_mandante
-                        , gol_visitante, visitante, ufVisitante, gols_jogo
-                        , resultado, resultado_mandante, resultado_visitante, placar
+                lista = [str(ano), serie.upper(), num_jogo, num_rodada, num_turno, estadio_jogo
+                        , cidade_jogo, uf_jogo
+                        , data, diasemana, hora_jogo, mandante, ufMandante
+                        , visitante, ufVisitante
+                        , resultado, placar
                         , lstGolsM, lstGolsV
-                        , linkJogo, dt_ini_cst, dt_fim_cst]
+                        , linkJogo]
 
                 ##Lista para armazenar todos os jogos pesquisados.
                 listaFinal.append(lista)
-
-    df_Final = pd.DataFrame(listaFinal
-                      , columns = ['Temporada', 'Série', 'Número do Jogo', 'Rodada', 'Turno', 'Estadio', 'Cidade', 'UF'
-                                    , 'Data', 'Dia da Semana', 'Hora', 'Mandante', 'UF Mandante', 'Gol Mandante'
-                                    , 'Gol Visitante', 'Visitante', 'UF Visitante', 'Total de Gols'
-                                    , 'Resultado', 'Resultado Mandante', 'Resultado Visitante', 'Placar'
-                                    , 'Gols Mandante', 'Gols Visitante'
-                                    , 'Link do Jogo'
-                                    , 'Data de Início da Consulta', 'Data de Fim da Consulta'])
     
-    return df_Final
-
-
-pd.options.display.max_rows = 999
-
-df_jogos = buscaJogos()
-df_estadios = df_jogos.filter(items=['Estadio','Cidade', 'UF']).drop_duplicates()
-print(df_estadios)
+    df_Final = pd.DataFrame(listaFinal, columns = ['Temporada', 'Serie', 'NumJogo', 'Rodada', 'Turno', 'Estadio', 'Cidade', 'UF'
+                                                    , 'Data', 'Dia da Semana', 'Hora', 'Mandante', 'ufMandante'
+                                                    , 'Visitante', 'ufVisitante'
+                                                    , 'Resultado',  'Placar'
+                                                    , 'Gols Mandante', 'Gols Visitante'
+                                                    , 'Link do Jogo'])
+    
+    return df_Final        
