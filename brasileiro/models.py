@@ -35,6 +35,7 @@ class Partida(models.Model):
     codCBF = models.IntegerField()
     descricao = models.CharField(max_length=100)
     datahora = models.DateTimeField()
+    diaSemana = models.CharField(max_length=30, null=True)
     numeroRodada = models.IntegerField()
     estadio = models.ForeignKey(Estadio, on_delete=models.CASCADE)
     mandante = models.ForeignKey(Time, on_delete=models.CASCADE, related_name='mandante_partida_set')

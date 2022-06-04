@@ -14,62 +14,12 @@ from datetime import date as dt
 from unicodedata import normalize as nm
 
 
-#Esta função captura o número do jogo e a Rodada conforme determinado pela CBF
-def numJogoRodada(numJogo):
-    ##Tratando a requisição que contém o número do jogo
-    num_jogo = int(numJogo.get_text().strip().replace('Jogo: ','').replace('<font color="red">(W.O. Duplo)</font>', ''))
-
-    ##if para calcular a rodada a que o jogo pertence
-    '''
-        1) A cada rodada ocorrem 10 jogos, sendo assim quando o número do jogo dividido por 10 tiver 0 como resto, a rodada será o quociente.
-        Ex: 200 / 10 = 20 - sendo assim a rodada a que pertence o jodo de nº 200 é a 20
-        2) Caso o **resto da divisão** do número do jogo for **diferente de 0** então a rodada corresponderá ao quociente (inteiro) + 1
-        Ex: 201 / 10 = 20,1 - sendo assim a rodada será 21, pois o resto é 1 e o quociente inteiro é 20.
-    '''
-    if (num_jogo%10 == 0):
-        rodada = int(int(num_jogo)/10)
-    else:
-        rodada = int((int(num_jogo)//10)+1)
-
-    ##if para calcular o turno ao qual o jogo pertence
-
-    if int(num_jogo) <= 190:
-      turno = 1
-    else:
-      turno = 2
-    ##lista para armazenar o numero do jogo, rodada e turno
-    listaResult = [num_jogo, rodada, int(turno)]
-    return listaResult
-
-##Remover acentos das strings
+#Remover acentos das strings
 def remove_acentos(str):
   str_sem_acentos = nm('NFKD', str).encode('ASCII', 'ignore').decode('ASCII')
   return str_sem_acentos
 
-#Esta função captura o estádio em que ocorreu o jogo
-def estadio(localJogo):
-    estadio = localJogo[0].get_text().split(" - ")[0].strip()
-    estadio_jogo = remove_acentos(estadio)
-    return estadio_jogo
-
-#Esta função captura a cidade em que ocorreu o jogo
-def cidade(localJogo):
-    cidade = localJogo[0].get_text().split(" - ")[1].strip()
-    cidade_jogo = remove_acentos(cidade)
-    return cidade_jogo
-
-#Esta função captura o estado em que ocorreu o jogo
-def uf(localJogo):
-    uf_jogo = localJogo[0].get_text().split(" - ")[2].strip()
-    return uf_jogo
-
-#Esta função captura o dia da semana em que ocorreu o jogo
-def diaSemana(dataJogo):
-    diasemana_origem = dataJogo[1].get_text().split(",")[0].strip()
-    diasemana = remove_acentos(diasemana_origem)
-    return diasemana
-
-##Padronizar mês da data do Jogo.
+#Padronizar mês da data do Jogo.
 def retMes(mes):
     if mes == 'Janeiro':
         return '01'
@@ -96,72 +46,87 @@ def retMes(mes):
     elif mes == 'Dezembro':
         return '12'
 
-#Esta função captura a data em que ocorreu o jogo
-def dataJogo(dataJogo):
-    data_origem = dataJogo[1].get_text().split(",")[1].strip()
+def trataNomeTime(nome_origem, uf_origem):
+    if (uf_origem == 'PR' and (nome_origem == 'Athletico Paranaense' or nome_origem == 'Atlético Paranaense' or nome_origem == 'Atletico' or nome_origem == 'Atlético')):
+      nome = 'Athletico Paranaense'
+    elif (uf_origem != 'PR' and (nome_origem == 'Atlético' or nome_origem == 'Atletico')):
+      nome = 'Atlético-'+uf_origem
+    elif (nome_origem == 'America Fc' or nome_origem == 'América Fc' or nome_origem == 'America' or nome_origem == 'América'):
+      nome = 'América-'+uf_origem
+    elif (nome_origem == 'Botafogo'):
+      nome = 'Botafogo-'+uf_origem
+    elif (nome_origem == 'C.r.b.' or nome_origem == 'Crb'):
+      nome = 'CRB-'+uf_origem
+    elif (nome_origem == 'A.b.c.' or nome_origem == 'Abc'):
+      nome = 'ABC-'+uf_origem
+    elif (nome_origem == 'A.s.a.'):
+      nome = 'ASA-'+uf_origem
+    elif (nome_origem == 'Csa'):
+      nome = 'CSA-'+uf_origem
+    else:
+      nome = nome_origem
+      
+    return remove_acentos(nome)
+
+#Busca dados iniciais do jogo
+#numero, rodada, turno
+def getDadosInicJogo(soup):
+    dadosInicJogo = soup.find(class_='color-white block text-1')
+    
+    ##Tratando a requisição que contém o número do jogo
+    num_jogo = int(dadosInicJogo.get_text().strip().replace('Jogo: ','').replace('<font color="red">(W.O. Duplo)</font>', ''))
+
+    '''
+        1) A cada rodada ocorrem 10 jogos, sendo assim quando o número do jogo dividido por 10 tiver 0 como resto, a rodada será o quociente.
+        Ex: 200 / 10 = 20 - sendo assim a rodada a que pertence o jodo de nº 200 é a 20
+        2) Caso o **resto da divisão** do número do jogo for **diferente de 0** então a rodada corresponderá ao quociente (inteiro) + 1
+        Ex: 201 / 10 = 20,1 - sendo assim a rodada será 21, pois o resto é 1 e o quociente inteiro é 20.
+    '''
+    if (num_jogo%10 == 0):
+        rodada = int(int(num_jogo)/10)
+    else:
+        rodada = int((int(num_jogo)//10)+1)
+
+    #Calcular o turno ao qual o jogo pertence usando if ternario
+    turno = 1 if int(num_jogo) <= 190 else 2
+
+    #numero do jogo, rodada e turno
+    listaResult = [num_jogo, rodada, int(turno)]
+    return listaResult
+
+#Busca dados do local e data do jogo
+## estadio, cidade uf, diasemana, data, hora
+def getDadosLocalJogo(soup):
+
+    dadosLocalJogo = soup.find_all(class_='text-2 p-r-20') 
+    listaResult = []
+    listaResult.append(remove_acentos(dadosLocalJogo[0].get_text().split(" - ")[0].strip()))
+    listaResult.append(remove_acentos(dadosLocalJogo[0].get_text().split(" - ")[1].strip()))
+    listaResult.append(remove_acentos(dadosLocalJogo[0].get_text().split(" - ")[2].strip()))
+    listaResult.append(remove_acentos(dadosLocalJogo[1].get_text().split(",")[0].strip()))
+    listaResult.append(remove_acentos(dadosLocalJogo[2].get_text().split(",")[0].strip()))
+
+    data_origem = dadosLocalJogo[1].get_text().split(",")[1].strip()
     lstData = data_origem.split(" de ")                        ##Separar os elementos que compõe a data
     dia = lstData[0]                                           ##Extrai o dia da data
     mes = retMes(lstData[1])                                   ##Extrai o mês da data
     ano = lstData[2]                                           ##Extrai o ano da data
-    dtjg = dt(int(ano), int(mes), int(dia)).isoformat()      ##Concatena os elementos da data para o formato AAAA-MM-DD
-    return dtjg
+    data_origem = dt(int(ano), int(mes), int(dia)).isoformat()   
+    listaResult.append(data_origem)   
 
-#Esta função captura o horário em que ocorreu o jogo
-def horaJogo(dataJogo):
-    hora_jogo = dataJogo[2].get_text().strip()
-    return hora_jogo
+    return listaResult
 
-#Esta função retorna o time mandante e seu estado de origem
-def retMandante(captTimes):
-    time = captTimes[0].get_text().split("-")[0].strip()
-    uf = captTimes[0].get_text().split("-")[1].strip()
-    if (uf == 'PR' and (time == 'Athletico Paranaense' or time == 'Atlético Paranaense' or time == 'Atletico' or time == 'Atlético')):
-      mandante_origem = 'Athletico Paranaense'
-    elif (uf != 'PR' and (time == 'Atlético' or time == 'Atletico')):
-      mandante_origem = 'Atlético-'+uf
-    elif (time == 'America Fc' or time == 'América Fc' or time == 'America' or time == 'América'):
-      mandante_origem = 'América-'+uf
-    elif (time == 'Botafogo'):
-      mandante_origem = 'Botafogo-'+uf
-    elif (time == 'C.r.b.' or time == 'Crb'):
-      mandante_origem = 'CRB-'+uf
-    elif (time == 'A.b.c.' or time == 'Abc'):
-      mandante_origem = 'ABC-'+uf
-    elif (time == 'A.s.a.'):
-      mandante_origem = 'ASA-'+uf
-    elif (time == 'Csa'):
-      mandante_origem = 'CSA-'+uf
-    else:
-      mandante_origem = time
-    mandante = remove_acentos(mandante_origem)
-    listaMandante = [mandante, uf]
-    return listaMandante
+#Retorna o time, estado e gols
+# mandante ou visitante
+def getDadosTime(dados, deQuem):    
+    index = 0 if deQuem == 'mandante' else 1
 
-#Esta função retorna o time visitante e seu estado de origem
-def retVisitante(captTimes):
-    time = captTimes[1].get_text().split("-")[0].strip()
-    uf = captTimes[1].get_text().split("-")[1].strip()
-    if (uf == 'PR' and (time == 'Athletico Paranaense' or time == 'Atlético Paranaense' or time == 'Atletico' or time == 'Atlético')):
-      visitante_origem = 'Athletico Paranaense'
-    elif (uf != 'PR' and (time == 'Atlético' or time == 'Atletico')):
-      visitante_origem = 'Atlético-'+uf
-    elif (time == 'America Fc' or time == 'América Fc' or time == 'America' or time == 'América'):
-      visitante_origem = 'América-'+uf
-    elif (time == 'Botafogo'):
-      visitante_origem = 'Botafogo-'+uf
-    elif (time == 'C.r.b.' or time == 'Crb'):
-      visitante_origem = 'CRB-'+uf
-    elif (time == 'A.b.c.' or time == 'Abc'):
-      visitante_origem = 'ABC-'+uf
-    elif (time == 'A.s.a.'):
-      visitante_origem = 'ASA-'+uf
-    elif (time == 'Csa'):
-      visitante_origem = 'CSA-'+uf
-    else:
-      visitante_origem = time
-    visitante = remove_acentos(visitante_origem)
-    listaVisitante = [visitante, uf]
-    return listaVisitante
+    nome_orig = dados[index].get_text().split("-")[0].strip()    
+    uf_orig = dados[index].get_text().split("-")[1].strip()
+        
+    nome = trataNomeTime(nome_orig)
+    dadosTime = [nome, uf_orig]
+    return dadosTime
 
 #Esta função retorna quantos gols o time mandante fez
 def retGolMandante(captGols):
@@ -225,7 +190,7 @@ def placarJogo(golMandante, golVisitante):
         placar = str(golVisitante)+'-'+str(golMandante)
     return placar
 
-def listaGols(ano, serie, numJogo, time, golJog, dt_ini_cst, dt_fim_cst, MandVisi): # 0 - Mandante, 1 - Visitante
+def listaGols(ano, serie, numJogo, time, golJog, MandVisi): # 0 - Mandante, 1 - Visitante
     lstFinalGols = []
     deQuem = ('Mandante' if MandVisi == 0 else 'Visitante')
 
@@ -247,7 +212,7 @@ def listaGols(ano, serie, numJogo, time, golJog, dt_ini_cst, dt_fim_cst, MandVis
                     tmpAcrescimo = captMinuto.split('+')[1]
                     lstMinuto = int(tmpNormal)+int(tmpAcrescimo)
                 lstTempo = lstGol[1]
-            lstGols = [ano, serie, numJogo, time, lstJogador, lstMinuto, lstTempo, deQuem, dt_ini_cst, dt_fim_cst]
+            lstGols = [ano, serie, numJogo, time, lstJogador, lstMinuto, lstTempo, deQuem]
             lstFinalGols.append(lstGols)
         return lstFinalGols
 
@@ -269,76 +234,74 @@ def buscaJogos():
                 linkJogo = linkRaiz+serie+'/'+str(ano)+'/'+str(nj)                 ##Link completo do jogo a ser capturado
                 requisicao = requests.get(linkJogo)
                 print(linkJogo)
+                                
+                soupJogo = BeautifulSoup(requisicao.content, 'html.parser')
+
+                # dados iniciais do jogo
+                dadosInicJogo = getDadosInicJogo(soupJogo) ;
+                num_jogo = dadosInicJogo[0]
+                num_rodada = dadosInicJogo[1]
+                num_turno = dadosInicJogo[2]
+                print(num_jogo, num_rodada, num_turno)
                 
-                ##Data de Início da Consulta
-                dtm_ini_cst = dtm.datetime.now()                    ##Coleta a data e hora em que a consulta começou
-                dt_ini_cst = dtm_ini_cst.strftime("%Y-%m-%d %H:%M:%S.%f") ##Formatando a data e hora em que a consulta começou
-                soup = BeautifulSoup(requisicao.content, 'html.parser')
+                # dados do local do jogo
+                dadosLocalDtHrJogo = getDadosLocalJogo(soupJogo)  
+                # estadio = dadosLocalDtHrJogo[0]                           
+                # cidade = dadosLocalDtHrJogo[1]                            
+                # uf = dadosLocalDtHrJogo[2]                                                                 
+                # diasemana = dadosLocalDtHrJogo[3]                             
+                # data = dadosLocalDtHrJogo[4]                                   
+                # hora_jogo = dadosLocalDtHrJogo[5]                              
+                print(dadosLocalDtHrJogo)
 
-                num_jogo = numJogoRodada(soup.find(class_='color-white block text-1'))[0]   ##Numero do Jogo
-                num_rodada = numJogoRodada(soup.find(class_='color-white block text-1'))[1] ##Numero da Rodada
-                num_turno = numJogoRodada(soup.find(class_='color-white block text-1'))[2]  ##Numero do Turno
+    #             dadosTimes = soup.find_all(class_='time-nome color-white')          
+    #             mandante = getDadosTime(dadosTimes, 'mandante')[0]                  
+    #             visitante = getDadosTime(dadosTimes, 'visitante')[0]                             
+    #             ufMandante = getDadosTime(dadosTimes, 'mandante')[1]                           
+    #             ufVisitante = getDadosTime(dadosTimes, 'visitante')[1]       
+    #             print(mandante, visitante, ufMandante, ufVisitante)                  
+
+    #             captGols = soup.find_all(class_='time-gols block')                 ##Variável que armazena os gols
+    #             gol_mandante = retGolMandante(captGols)                            ##Gols Mandante
+    #             gol_visitante = retGolVisitante(captGols)                          ##Gols Visitante
+    #             gols_jogo = totalGolsJogo(captGols)                                ##Quantidade de Gols no Jogo
+
+    #             ##Variável que indica quem foi o vencedor do jogo ou se houve empate
+    #             resultado = resultJogo(captGols)[0]
+    #             ##Variável que indica se o mandante venceu, empatou ou perdeu o jogo
+    #             resultado_mandante = resultJogo(captGols)[1]
+    #             ##Variável que indica se o visitante venceu, empatou ou perdeu o jogo
+    #             resultado_visitante = resultJogo(captGols)[2]
+    #             ##Placar do Jogo (padronizado sempre do maior para o menor número de gols)
+    #             placar = placarJogo(gol_mandante, gol_visitante)
+                            
+
+    #             ##Este bloco visa capturar as informações sobre os gols: quem fez, quando fez, tempo que fez etc.
+    #             golJog = soup.find_all(class_='hidden-sm hidden-md hidden-lg m-t-20') ##Lista de Jogadores e tempo dos Gols
                 
-                localdthr_jogo = soup.find_all(class_='text-2 p-r-20')             ##Variável com informações do Local do Jogo
-                estadio_jogo = estadio(localdthr_jogo)                             ##Estádio do Jogo
-                cidade_jogo = cidade(localdthr_jogo)                               ##Cidade do Jogo
-                uf_jogo = uf(localdthr_jogo)                                       ##UF do Jogo
-                
-                diasemana = diaSemana(localdthr_jogo)                              ##Dia da Semana do Jogo
-                data = dataJogo(localdthr_jogo)                                    ##Data do Jogo
-                hora_jogo = horaJogo(localdthr_jogo)                               ##Hora do Jogo
-                if (data > str(dt.today())):
-                    break
+    #             ##Captura informações sobre os Gosl do Mandante
+    #             lstGolsM = listaGols(str(ano), serie.upper(), num_jogo, mandante, golJog, 0)
+    #             ##Captura informações sobre os Gosl do Visitante
+    #             lstGolsV = listaGols(str(ano), serie.upper(), num_jogo, visitante, golJog, 1)
 
-                captTimes = soup.find_all(class_='time-nome color-white')          ##Variável com os times
-                mandante = retMandante(captTimes)[0]                               ##Mandante do jogo
-                visitante = retVisitante(captTimes)[0]                             ##Visitante do jogo     
-                ufMandante = retMandante(captTimes)[1]                             ##UF Mandante do jogo
-                ufVisitante = retVisitante(captTimes)[1]                           ##UF Visitante do jogo
+    #             ##Lista para armazenar o jogo que está sendo pesquisado no momento
+    #             lista = [str(ano), serie.upper(), num_jogo, num_rodada, num_turno, estadio
+    #                     , cidade, uf
+    #                     , data, diasemana, hora_jogo, mandante, ufMandante
+    #                     , visitante, ufVisitante
+    #                     , resultado, placar
+    #                     , lstGolsM, lstGolsV
+    #                     , linkJogo]
 
-                captGols = soup.find_all(class_='time-gols block')                 ##Variável que armazena os gols
-                gol_mandante = retGolMandante(captGols)                            ##Gols Mandante
-                gol_visitante = retGolVisitante(captGols)                          ##Gols Visitante
-                gols_jogo = totalGolsJogo(captGols)                                ##Quantidade de Gols no Jogo
-
-                ##Variável que indica quem foi o vencedor do jogo ou se houve empate
-                resultado = resultJogo(captGols)[0]
-                ##Variável que indica se o mandante venceu, empatou ou perdeu o jogo
-                resultado_mandante = resultJogo(captGols)[1]
-                ##Variável que indica se o visitante venceu, empatou ou perdeu o jogo
-                resultado_visitante = resultJogo(captGols)[2]
-                ##Placar do Jogo (padronizado sempre do maior para o menor número de gols)
-                placar = placarJogo(gol_mandante, gol_visitante)
-                
-                ##Data de Finalização da Consulta
-                dtm_fim_cst = dtm.datetime.now()                    ##Coleta a data e hora em que a consulta foi executada
-                dt_fim_cst = dtm_fim_cst.strftime("%Y-%m-%d %H:%M:%S.%f") ##Formatando a data e hora da consulta
-
-                ##Este bloco visa capturar as informações sobre os gols: quem fez, quando fez, tempo que fez etc.
-                golJog = soup.find_all(class_='hidden-sm hidden-md hidden-lg m-t-20') ##Lista de Jogadores e tempo dos Gols
-                
-                ##Captura informações sobre os Gosl do Mandante
-                lstGolsM = listaGols(str(ano), serie.upper(), num_jogo, mandante, golJog, dt_ini_cst, dt_fim_cst, 0)
-                ##Captura informações sobre os Gosl do Visitante
-                lstGolsV = listaGols(str(ano), serie.upper(), num_jogo, visitante, golJog, dt_ini_cst, dt_fim_cst, 1)
-
-                ##Lista para armazenar o jogo que está sendo pesquisado no momento
-                lista = [str(ano), serie.upper(), num_jogo, num_rodada, num_turno, estadio_jogo
-                        , cidade_jogo, uf_jogo
-                        , data, diasemana, hora_jogo, mandante, ufMandante
-                        , visitante, ufVisitante
-                        , resultado, placar
-                        , lstGolsM, lstGolsV
-                        , linkJogo]
-
-                ##Lista para armazenar todos os jogos pesquisados.
-                listaFinal.append(lista)
+    #             ##Lista para armazenar todos os jogos pesquisados.
+    #             listaFinal.append(lista)
     
-    df_Final = pd.DataFrame(listaFinal, columns = ['Temporada', 'Serie', 'NumJogo', 'Rodada', 'Turno', 'Estadio', 'Cidade', 'UF'
-                                                    , 'Data', 'Dia da Semana', 'Hora', 'Mandante', 'ufMandante'
-                                                    , 'Visitante', 'ufVisitante'
-                                                    , 'Resultado',  'Placar'
-                                                    , 'Gols Mandante', 'Gols Visitante'
-                                                    , 'Link do Jogo'])
+    # df_Final = pd.DataFrame(listaFinal, columns = ['Temporada', 'Serie', 'NumJogo', 'Rodada', 'Turno', 'Estadio', 'Cidade', 'UF'
+    #                                                 , 'Data', 'Dia da Semana', 'Hora', 'Mandante', 'ufMandante'
+    #                                                 , 'Visitante', 'ufVisitante'
+    #                                                 , 'Resultado',  'Placar'
+    #                                                 , 'Gols Mandante', 'Gols Visitante'
+    #                                                 , 'Link do Jogo'])
     
-    return df_Final        
+    return 0        
+
